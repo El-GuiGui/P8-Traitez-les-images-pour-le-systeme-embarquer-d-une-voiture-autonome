@@ -1,4 +1,6 @@
 from tensorflow.keras import layers, Model
+from tensorflow.keras.models import Model
+import tensorflow as tf
 
 
 def conv_block(x, filters):
@@ -53,10 +55,6 @@ def unet_scratch(input_shape=(256, 256, 3), n_classes=8, base=32):
     return Model(inputs, outputs, name="unet_scratch")
 
 
-import tensorflow as tf
-from tensorflow.keras import layers, Model
-
-
 def unet_vgg16(
     input_shape=(256, 256, 3), n_classes=8, encoder_weights="imagenet", trainable=False
 ):
@@ -84,11 +82,6 @@ def unet_vgg16(
 
     outputs = layers.Conv2D(n_classes, 1, activation="softmax", padding="same")(x)
     return Model(base.input, outputs, name="unet_vgg16")
-
-
-import tensorflow as tf
-from tensorflow.keras import layers
-from tensorflow.keras.models import Model
 
 
 @tf.keras.utils.register_keras_serializable(package="proj8")

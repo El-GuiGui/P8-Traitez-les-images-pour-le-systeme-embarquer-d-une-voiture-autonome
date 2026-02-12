@@ -3,8 +3,14 @@ set -e
 
 export API_BASE="http://localhost:8000"
 
-# API
-python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 &
+# API (backend on localhost:8000)
+python -m uvicorn api.main:app --host localhost --port 8000 &
 
-# Streamlit
-streamlit run app/streamlit_app.py --server.address 0.0.0.0 --server.port 8501
+# Streamlit (frontend on 0.0.0.0:5000)
+streamlit run app/streamlit_app.py \
+  --server.address 0.0.0.0 \
+  --server.port 5000 \
+  --server.headless true \
+  --server.enableCORS false \
+  --server.enableXsrfProtection false \
+  --browser.gatherUsageStats false
