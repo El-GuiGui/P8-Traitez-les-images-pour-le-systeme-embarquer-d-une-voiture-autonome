@@ -38,7 +38,7 @@ def _download_model_if_needed():
 
 
 if not SKIP_MODEL_LOAD:
-    from scripts.inference import predict_from_pil
+    from scripts.inference import predict_from_pil, ensure_model_present
 else:
     import numpy as np
 
@@ -59,7 +59,7 @@ else:
 def _startup():
     if SKIP_MODEL_LOAD:
         return
-    _download_model_if_needed()
+    ensure_model_present(MODEL_PATH, force=False)
 
 
 @app.get("/health")
@@ -80,7 +80,7 @@ async def predict_mask(file: UploadFile = File(...)):
     try:
         raw = await file.read()
         img = Image.open(BytesIO(raw))
-        mask, _, _, _ = predict_from_pil(img)
+        mask, _, _, _ = predict_from_pil(img, model_path=MODEL_PATH)
 
         out = Image.fromarray(mask, mode="L")
         buf = BytesIO()
@@ -98,7 +98,7 @@ async def predict_mask_color(file: UploadFile = File(...)):
     try:
         raw = await file.read()
         img = Image.open(BytesIO(raw))
-        _, mask_color, _, _ = predict_from_pil(img)
+        _, mask_color, _, _ = predict_from_pil(img, model_path=MODEL_PATH)
 
         buf = BytesIO()
         mask_color.save(buf, format="PNG")
@@ -115,7 +115,7 @@ async def predict_overlay(file: UploadFile = File(...)):
     try:
         raw = await file.read()
         img = Image.open(BytesIO(raw))
-        _, _, overlay_img, _ = predict_from_pil(img)
+        _, _, overlay_img, _ = predict_from_pil(img, model_path=MODEL_PATH)
 
         buf = BytesIO()
         overlay_img.save(buf, format="PNG")
