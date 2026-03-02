@@ -61,16 +61,6 @@ def cityscapes_key(filename: str) -> str:
     return stem
 
 
-# labelIds ->
-# void: 0..6 (+255 ignore)
-# flat: 7..10
-# construction: 11..16
-# object: 17..20
-# nature: 21..22
-# sky: 23
-# human: 24..25
-# vehicle: 26..33
-
 LABELIDS_TO_GROUP = np.full(256, 0, dtype=np.uint8)
 for i in [7, 8, 9, 10]:
     LABELIDS_TO_GROUP[i] = 1
@@ -133,46 +123,36 @@ def decode_png_bytes_to_np(png_bytes: bytes) -> np.ndarray:
 def pred_mask_from_api(mask_png: bytes) -> np.ndarray:
     arr = decode_png_bytes_to_np(mask_png)
 
-    # case A: already 0..7
     if arr.max() <= 7:
         return arr.astype(np.uint8)
 
-    # case B: "visual" 0..255 of 0..7
-    # map back by rounding
     if arr.max() <= 255:
         est = np.rint(arr.astype(np.float32) * (N_CLASSES - 1) / 255.0)
         est = np.clip(est, 0, N_CLASSES - 1).astype(np.uint8)
         return est
 
-    # fallback
     return np.clip(arr, 0, 7).astype(np.uint8)
 
 
 def gt_mask_from_upload(gt_bytes: bytes, target_hw: tuple[int, int]) -> np.ndarray:
-    """Load GT png and return groups 0..7 in target size (H,W)."""
     im = Image.open(io.BytesIO(gt_bytes))
 
-    # Cityscapes masks are often single channel; enforce "L"
     if im.mode not in ("L", "I;16"):
         im = im.convert("L")
 
-    # resize to prediction size
     H, W = target_hw
     im = im.resize((W, H), Image.NEAREST)
     arr = np.array(im)
 
-    # If it's already grouped 0..7 -> keep
     if arr.max() <= 7:
         return arr.astype(np.uint8)
 
-    # Else it's probably labelIds -> remap
     return remap_labelids_to_groups(arr)
 
 
 def confusion_matrix(
     gt: np.ndarray, pred: np.ndarray, num_classes: int = N_CLASSES
 ) -> np.ndarray:
-    """gt/pred: (H,W) uint8, gt may contain 255 ignore."""
     if gt.shape != pred.shape:
         raise ValueError(f"Shape mismatch GT {gt.shape} vs Pred {pred.shape}")
 
@@ -198,7 +178,6 @@ def iou_from_cm(cm: np.ndarray) -> tuple[np.ndarray, float]:
 
 
 def pixel_stats(mask: np.ndarray) -> pd.DataFrame:
-    """mask: 0..7 or 255 ignore; returns table per class."""
     m = mask.copy()
     m = m[m != IGNORE_LABEL]
     total = int(m.size) if m.size else 1
@@ -321,14 +300,12 @@ if gt_up is not None and rgb_up is not None:
         gt_name = gt_up.name
         gt_bytes = gt_up.getvalue()
 
-        # Need prediction mask to evaluate
         if "pred_mask" not in locals() or pred_mask is None:
             st.warning("Aucune prédiction disponible (API KO ou pas d'image RGB).")
         else:
             H, W = pred_mask.shape[:2]
             gt_mask = gt_mask_from_upload(gt_bytes, target_hw=(H, W))
 
-            # filename matching (warning only)
             k_rgb = cityscapes_key(rgb_name or "")
             k_gt = cityscapes_key(gt_name or "")
             if k_rgb and k_gt and (k_rgb != k_gt):
